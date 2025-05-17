@@ -144,9 +144,15 @@ def _splitter(
     gm.recompile()
 
     # `split_module` iterates over nodes and determines the partition to place them based on the callback.
-    original_split_gm: torch.fx.GraphModule = split_module(
-        gm, root_m=None, split_callback=callback, keep_original_order=True, keep_original_node_name=True
-    )
+    try:
+        original_split_gm: torch.fx.GraphModule = split_module(
+            gm, root_m=None, split_callback=callback, keep_original_order=True, keep_original_node_name=True
+        )
+    except KeyError as e:
+        raise RuntimeError(
+            f"[ThunderFX] split_module failed: missing partition '{e.args[0]}'."
+            " This is likely due to a missing entry in the dependency map during FX graph splitting."
+        ) from e
 
     # Workaround for the Torch bug https://github.com/pytorch/pytorch/pull/139275
     for submodule in original_split_gm.children():
